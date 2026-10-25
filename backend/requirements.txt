@@ -1,0 +1,14 @@
+# Backend framework and server execution
+fastapi>=0.115
+uvicorn[standard]>=0.30
+# Data validation and request handling
+pydantic>=2.7
+pydantic-settings>=2.3
+python-multipart>=0.0.9
+# AI model communication
+groq>=0.11
+# Configuration and environment management
+python-dotenv>=1.0
+# Testing
+pytest>=8.0
+httpx>=0.27

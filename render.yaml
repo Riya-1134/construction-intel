@@ -1,0 +1,57 @@
+# Render Blueprint - deploys the FastAPI backend and the static React frontend together.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy: push this repo to GitHub/GitLab, then in Render choose "New > Blueprint" and pick the repo.
+# Render will prompt for GROQ_API_KEY (marked sync: false) and wire the two service URLs to each other.
+
+services:
+  # ---------------------------------------------------------------- backend API
+  - type: web
+    name: construction-intel-api
+    runtime: python
+    plan: free                      # upgrade to "starter" to avoid cold starts / spin-down
+    region: singapore               # closest to India; change to oregon / frankfurt if needed
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: GROQ_API_KEY
+        sync: false                 # entered once in the Render dashboard, never stored in the repo
+      - key: GROQ_TEXT_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_VISION_MODEL
+        value: qwen/qwen3.8-27b
+      - key: DEMO_MODE
+        value: "false"
+      - key: CORS_ORIGINS           # the frontend's public host is injected automatically
+        fromService:
+          type: web
+          name: construction-intel-web
+          property: host
+
+  # ---------------------------------------------------------------- frontend (static)
+  - type: web
+    name: construction-intel-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL      # the backend's public host is injected at build time
+        fromService:
+          type: web
+          name: construction-intel-api
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
